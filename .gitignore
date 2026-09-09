@@ -1,0 +1,68 @@
+# ============================================
+# Keil uVision build artifacts
+# ============================================
+*.uvgui.*
+*.uvopt
+*.uvoptx
+*.uvgui
+Listings/
+Objects/*.d
+Objects/*.lst
+Objects/*.map
+Objects/*.htm
+Objects/*.lnp
+Objects/*.m51
+Objects/*.plg
+Objects/*.rep
+Objects/*.sct
+Objects/*.dep
+Objects/LightStander
+Objects/LightStander.build_log.htm
+*.obj
+*.o
+*.elf
+*.bin
+
+# Keep hex file for easy flashing
+!Objects/LightStander.hex
+
+# ============================================
+# STC ISP
+# ============================================
+*.icf
+*.xmf
+
+# ============================================
+# OS & Editor
+# ============================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+
+# ============================================
+# IDE
+# ============================================
+.vscode/
+.idea/
+
+# ============================================
+# Python (Tools)
+# ============================================
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# ============================================
+# Node.js (if used by tools)
+# ============================================
+node_modules/
+package-lock.json
+.idea/
+*.swp
+*.swo
+*~
