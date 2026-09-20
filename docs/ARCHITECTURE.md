@@ -182,8 +182,8 @@ compensated = light_reading × 1192 / bandgap_reading
 
 | 区域 | 大小 | 内容 |
 |------|------|------|
-| Code | ~8187 B | 程序代码 |
+| Code | ~8177 B | 程序代码 |
 | Const | ~5 KB | 股票位图（bitmap.h） |
 | Font | 864 B | 27×32 字模（font_cn_16.c） |
 | ASCII Font | 195 B | 39×5 ASCII 字模（oled.c） |
-| **总计** | **~8187 B** | **上限 8192 B** |
+| **总计** | **~8177 B** | **上限 8192 B** |
