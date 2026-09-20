@@ -10,15 +10,6 @@
 void DisplayStandby(void)
 {
     OLED_Clear();
-    if (current_mode == MODE_TRADE) {
-        // "ÒâÍâ²ÙÅÌ" 4 CN chars x 16px = 64px, centered: (128-64)/2 = 32
-        OLED_ShowCN16x2(32, 0, F16_YI, F16_WAI);
-        OLED_ShowCN16x2(64, 0, F16_CAO, F16_PAN);
-    } else {
-        // "Ëæ»úÑ¡¹É" 4 CN chars x 16px = 64px, centered: (128-64)/2 = 32
-        OLED_ShowCN16x2(32, 0, F16_SUI, F16_JI2);
-        OLED_ShowCN16x2(64, 0, F16_XUAN, F16_GU);
-    }
 }
 
 void DisplayMerit(uint32_t merit)
@@ -34,11 +25,8 @@ void DisplayMerit(uint32_t merit)
 void DisplayStock(uint32_t stock_code)
 {
     OLED_Clear();
-    // "Ëæ»úÑ¡¹É" 4 CN chars x 16px = 64px, centered: x=32
-    OLED_ShowCN16x2(32, 0, F16_SUI, F16_JI2);
-    OLED_ShowCN16x2(64, 0, F16_XUAN, F16_GU);
-    // Stock code on bottom: 6 digits x 12px = 72px, centered: (128-72)/2 = 28
-    OLED_ShowBigNum6(28, 2, stock_code);
+    // Stock code: 6 digits x 12px = 72px, centered: (128-72)/2 = 28
+    OLED_ShowBigNum6(28, 0, stock_code);
 }
 
 void DisplayMeritAdd(void)
@@ -75,9 +63,6 @@ void DisplayTradeAction(uint8_t idx)
 {
     if (idx >= 9) idx = 0;
     OLED_Clear();
-    // Title "????" centered: 4×16=64px, x=32
-    OLED_ShowCN16x2(32, 0, F16_YI, F16_WAI);
-    OLED_ShowCN16x2(64, 0, F16_CAO, F16_PAN);
-    // Trade action centered: 2×16=32px, x=48
-    OLED_ShowCN16x2(48, 2, tradePairs[idx][0], tradePairs[idx][1]);
+    // Trade action: 2×16=32px, centered: (128-32)/2 = 48
+    OLED_ShowCN16x2(48, 0, tradePairs[idx][0], tradePairs[idx][1]);
 }
