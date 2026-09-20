@@ -4,14 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.0.1] - 2026-09-02
-
-### Fixed
-- 修复待机恢复/运行中字体变小、乱码的显示问题
-- I2C 时序加固：SCL 高电平 NOP 延迟从 2 个增至 4 个（~333ns），确保 SSD1306 满足数据建立时间要求
-- 关键 OLED 显示函数添加 `EA=0/EA=1` 中断保护，防止 INT0 中断打断 I2C 位操作导致 SSD1306 误收命令字节（如 0xB0 误置页地址）
-
-## [1.0.0] - 2026-09-02
+## [1.0.0] - 2026-09-20
 
 ### Features
 - Random A-share stock code generator covering 5914 stocks across 12 exchange prefixes
@@ -21,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Single-button interface with short press (select) and long press (mode switch)
 - Dual-slot EEPROM persistence with power-loss protection
 - SSD1306 OLED 128×32 display with 16×16 Chinese font rendering
+- Software I2C with optimized timing (4-NOP SCL high) and interrupt protection (EA=0 during display)
+- Low-battery protection: auto power-off when VDD < 3.3V (bandgap-referenced)
+- Light threshold optimized to 3072 (bandgap-compensated units)
 - Boot self-test displaying light entropy accumulation value
 - Dynamic stock data from cninfo + sina APIs (auto-update scripts)
 
@@ -54,8 +50,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Wake-on-button via INT0 interrupt
 
 ### Code Size
-- Total: ~8170 bytes / 8192 bytes (99.7% utilization)
-- Font data: 28 × 32 = 896 bytes
+- Total: ~8169 bytes / 8192 bytes (99.7% utilization)
+- Font data: 27 × 32 = 864 bytes
 - Stock bitmaps: ~5000 bytes (12 prefix groups)
 - All 8 MCU pins utilized, zero waste
 - BOM cost: ?9.90 — maximum value from minimum silicon

@@ -7,7 +7,7 @@
 
 // Light threshold (compensated units, 0..4095)
 // Sunlight ? 2000+, fluorescent ? 500-800
-#define LIGHT_THRESHOLD_ON   3096
+#define LIGHT_THRESHOLD_ON   3072
 
 void ADC_Init(void)
 {
