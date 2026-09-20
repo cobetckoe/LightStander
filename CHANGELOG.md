@@ -9,12 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Features
 - Random A-share stock code generator covering 5914 stocks across 12 exchange prefixes
 - Random trade action selector (9 actions: ²¹²Ö/¿Õ²Ö/Æ½²Ö/¼õ²Ö/°ë²Ö/½¨²Ö/¼Ó²Ö/³Ö²Ö/Âú²Ö)
+- Trade mode display: shows "????" title + action result (consistent with stock mode)
 - Light-based hardware entropy for true randomness (bandgap-compensated ADC)
-- Ultra-low power STOP mode (~5¦ÌA standby)
+- Ultra-low power STOP mode (~5?A standby)
 - Single-button interface with short press (select) and long press (mode switch)
 - Dual-slot EEPROM persistence with power-loss protection
-- SSD1306 OLED 128¡Á32 display with 16¡Á16 Chinese font rendering
-- Software I2C with optimized timing (4-NOP SCL high) and interrupt protection (EA=0 during display)
+- SSD1306 OLED 128×32 display with 16×16 Chinese font rendering
+- Software I2C: EA interrupt protection at lowest level (per WriteCmd/WriteData)
+- Software I2C: 4-NOP SCL high period (~250ns) for SSD1306 timing compliance
 - Low-battery protection: auto power-off when VDD < 3.3V (bandgap-referenced)
 - Light threshold optimized to 3072 (bandgap-compensated units)
 - Boot self-test displaying light entropy accumulation value
@@ -50,7 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Wake-on-button via INT0 interrupt
 
 ### Code Size
-- Total: ~8169 bytes / 8192 bytes (99.7% utilization)
+- Total: ~8187 bytes / 8192 bytes (99.9% utilization)
 - Font data: 27 ¡Á 32 = 864 bytes
 - Stock bitmaps: ~5000 bytes (12 prefix groups)
 - All 8 MCU pins utilized, zero waste

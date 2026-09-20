@@ -75,6 +75,9 @@ void DisplayTradeAction(uint8_t idx)
 {
     if (idx >= 9) idx = 0;
     OLED_Clear();
-    // Action name centered on top: (128-32)/2 = 48
-    OLED_ShowCN16x2(48, 0, tradePairs[idx][0], tradePairs[idx][1]);
+    // Title "????" centered: 4×16=64px, x=32
+    OLED_ShowCN16x2(32, 0, F16_YI, F16_WAI);
+    OLED_ShowCN16x2(64, 0, F16_CAO, F16_PAN);
+    // Trade action centered: 2×16=32px, x=48
+    OLED_ShowCN16x2(48, 2, tradePairs[idx][0], tradePairs[idx][1]);
 }
