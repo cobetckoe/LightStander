@@ -10,6 +10,15 @@
 void DisplayStandby(void)
 {
     OLED_Clear();
+    if (current_mode == MODE_TRADE) {
+        // "????" 4 CN chars x 16px = 64px, centered: (128-64)/2 = 32
+        OLED_ShowCN16x2(32, 0, F16_YI, F16_WAI);
+        OLED_ShowCN16x2(64, 0, F16_CAO, F16_PAN);
+    } else {
+        // "????" 4 CN chars x 16px = 64px, centered: (128-64)/2 = 32
+        OLED_ShowCN16x2(32, 0, F16_SUI, F16_JI2);
+        OLED_ShowCN16x2(64, 0, F16_XUAN, F16_GU);
+    }
 }
 
 void DisplayMerit(uint32_t merit)

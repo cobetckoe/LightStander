@@ -116,20 +116,21 @@ static void SelectTradeAction(void)
 void ExecuteSelect(void)
 {
     if (!IsLightSufficient()) {
+        uint16_t wait = 0;
         OLED_Clear();
-        // "??????" 5 chars x 16px = 80px, centered: (128-80)/2 = 24
+        // "«Î’æπ‚¿Ô" 5 chars x 16px = 80px, centered: (128-80)/2 = 24
         OLED_ShowCN16x2(24, 0, F16_QING, F16_ZHAN);
         OLED_ShowCN16x2(56, 0, F16_ZAI, F16_GUANG);
         OLED_ShowCN16(88, 0, F16_LI);
-        // Auto return ~2s, or manual return on button press
-        {
-            uint16_t i;
-            for (i = 0; i < 200; i++) {
-                delay_ms(10);
-                if (!P32) break;  // Button pressed (active low)
+        // Poll: ~2s auto-timeout or key press to return immediately
+        while (wait < 200) {
+            delay_ms(10);
+            wait++;
+            if (!P32) {
+                while (!P32);
+                delay_ms(80);
+                break;
             }
-            while (!P32);         // Wait for release
-            delay_ms(80);         // Debounce
         }
         return;
     }
