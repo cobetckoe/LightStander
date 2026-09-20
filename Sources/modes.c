@@ -121,7 +121,16 @@ void ExecuteSelect(void)
         OLED_ShowCN16x2(24, 0, F16_QING, F16_ZHAN);
         OLED_ShowCN16x2(56, 0, F16_ZAI, F16_GUANG);
         OLED_ShowCN16(88, 0, F16_LI);
-        delay_ms(2000);
+        // Auto return ~2s, or manual return on button press
+        {
+            uint16_t i;
+            for (i = 0; i < 200; i++) {
+                delay_ms(10);
+                if (!P32) break;  // Button pressed (active low)
+            }
+            while (!P32);         // Wait for release
+            delay_ms(80);         // Debounce
+        }
         return;
     }
 
