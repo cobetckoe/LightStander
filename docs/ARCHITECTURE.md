@@ -158,7 +158,13 @@ compensated = light_reading × 1192 / bandgap_reading
 1. **进入 STOP**：关闭 ADC、OLED 电荷泵、所有 GPIO 设为准双向
 2. **唤醒**：INT0 下降沿触发，MCU 从 STOP 恢复
 3. **恢复顺序**：等待按键释放 → 重新初始化 GPIO → 重新初始化 ADC/OLED
+### I2C 可靠性
 
+软件 I2C（P5.5=SCL, P5.4=SDA）的时序和中断保护经过优化，确保 SSD1306 显示稳定：
+
+**时序加固**：24MHz 1T 8051 下，SCL 高电平由 4 个 `_nop_()` 保证（~333ns），满足 SSD1306 数据建立/保持时间要求。
+
+**中断保护**：OLED_Clear、OLED_ShowCN16、OLED_ShowBigChar 等关键显示函数在 I2C 传输期间关闭全局中断（`EA=0`），防止 INT0 中断打断位操作。若中断在 I2C 传输中触发，SSD1306 可能将数据字节误判为命令字节（如 0xB0-0xBF = 页地址跳转），导致字体错位或乱码。
 ## EEPROM 存储
 
 双备份策略防止断电丢数据：
@@ -176,8 +182,8 @@ compensated = light_reading × 1192 / bandgap_reading
 
 | 区域 | 大小 | 内容 |
 |------|------|------|
-| Code | ~8158 B | 程序代码 |
+| Code | ~8170 B | 程序代码 |
 | Const | ~5 KB | 股票位图（bitmap.h） |
-| Font | 864 B | 27×32 字模（font_cn_16.c） |
+| Font | 896 B | 28×32 字模（font_cn_16.c） |
 | ASCII Font | 195 B | 39×5 ASCII 字模（oled.c） |
-| **总计** | **~8158 B** | **上限 8192 B** |
+| **总计** | **~8170 B** | **上限 8192 B** |

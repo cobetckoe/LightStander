@@ -67,15 +67,15 @@ static uint8_t CharToIndex(char c)
 
 static void I2C_Start(void)
 {
-    SDA = 1; SCL = 1; _nop_(); _nop_();
-    SDA = 0; _nop_(); _nop_();
+    SDA = 1; SCL = 1; _nop_(); _nop_(); _nop_(); _nop_();
+    SDA = 0; _nop_(); _nop_(); _nop_(); _nop_();
     SCL = 0;
 }
 
 static void I2C_Stop(void)
 {
-    SDA = 0; _nop_(); _nop_();
-    SCL = 1; _nop_(); _nop_();
+    SDA = 0; _nop_(); _nop_(); _nop_(); _nop_();
+    SCL = 1; _nop_(); _nop_(); _nop_(); _nop_();
     SDA = 1;
 }
 
@@ -85,11 +85,11 @@ static void I2C_WriteByte(uint8_t dat)
     for (i = 0; i < 8; i++) {
         SDA = (dat & 0x80) ? 1 : 0;
         dat <<= 1;
-        SCL = 1; _nop_(); _nop_();
+        SCL = 1; _nop_(); _nop_(); _nop_(); _nop_();
         SCL = 0;
     }
     SDA = 1;
-    SCL = 1; _nop_(); _nop_();
+    SCL = 1; _nop_(); _nop_(); _nop_(); _nop_();
     SCL = 0;
 }
 
@@ -153,6 +153,7 @@ void OLED_Off(void)
 void OLED_Clear(void)
 {
     uint8_t page, col;
+    EA = 0;
     for (page = 0; page < 4; page++) {
         OLED_WriteCmd(0xB0 + page);
         OLED_WriteCmd(0x00);
@@ -161,6 +162,7 @@ void OLED_Clear(void)
             OLED_WriteData(0x00);
         }
     }
+    EA = 1;
 }
 
 static void OLED_SetCursor(uint8_t x, uint8_t page)
@@ -177,6 +179,7 @@ static void OLED_ShowBigChar(uint8_t x, uint8_t page, char c)
     uint8_t idx = CharToIndex(c);
     const uint8_t *src = Font5x7[idx];
 
+    EA = 0;
     // Top half
     OLED_SetCursor(x, page);
     for (i = 0; i < 5; i++) {
@@ -203,6 +206,7 @@ static void OLED_ShowBigChar(uint8_t x, uint8_t page, char c)
         OLED_WriteData(out);
         OLED_WriteData(out);
     }
+    EA = 1;
 }
 
 void OLED_ShowBigNum6(uint8_t x, uint8_t page, uint32_t num)
@@ -234,6 +238,7 @@ void OLED_ShowCN16(uint8_t x, uint8_t page, uint8_t idx)
     uint8_t i;
     if (idx >= F16_CNT) return;
 
+    EA = 0;
     OLED_SetCursor(x, page);
     for (i = 0; i < 16; i++) {
         OLED_WriteData(F16Dat[idx][i]);
@@ -245,6 +250,7 @@ void OLED_ShowCN16(uint8_t x, uint8_t page, uint8_t idx)
             OLED_WriteData(F16Dat[idx][16 + i]);
         }
     }
+    EA = 1;
 }
 
 // Show 2 Chinese characters side by side
