@@ -24,6 +24,10 @@ void main(void)
     while (1) {
         EnterStopMode();
         // Woke up from button
+        if (CheckBattery()) {
+            OLED_Off();
+            continue;
+        }
         DisplayMerit(light_merit);
         delay_ms(500);
         DisplayStandby();
@@ -49,7 +53,7 @@ void delay_ms(uint16_t ms)
 {
     uint16_t i;
     do {
-        i = MAIN_Fosc / 10000;
+        i = 2048;  // ~1.17ms at 24MHz (power-of-2, avoids div)
         while (--i);
     } while (--ms);
 }

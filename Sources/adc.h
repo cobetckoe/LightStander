@@ -6,5 +6,6 @@
 void    ADC_Init(void);
 uint16_t ReadLightADC(void);
 uint8_t  IsLightSufficient(void);
+uint8_t  CheckBattery(void);
 
 #endif

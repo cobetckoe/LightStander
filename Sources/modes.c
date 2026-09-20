@@ -99,7 +99,7 @@ static void SelectStock(void)
 
     stock_val = (uint32_t)prefix * 1000 + suffix;
     DisplayStock(stock_val);
-    delay_or_key_ms(1500);
+    delay_ms(1500);
 }
 
 // Randomly select one of 9 trading actions
@@ -110,7 +110,7 @@ static void SelectTradeAction(void)
     idx = FastRand() % 9;
 
     DisplayTradeAction(idx);
-    delay_or_key_ms(1500);
+    delay_ms(1500);
 }
 
 void ExecuteSelect(void)
@@ -137,7 +137,7 @@ void ExecuteSelect(void)
 
     // Show "??+1"
     DisplayMeritAdd();
-    delay_or_key_ms(500);
+    delay_ms(500);
 
     light_merit++;
     SaveMeritDeferred();

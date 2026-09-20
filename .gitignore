@@ -20,6 +20,8 @@ Objects/LightStander
 Objects/LightStander.build_log.htm
 *.obj
 *.o
+*.i
+*.__i
 *.elf
 *.bin
 

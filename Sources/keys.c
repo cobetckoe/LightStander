@@ -86,13 +86,4 @@ uint8_t ProcessKey(void)
     }
 }
 
-// Delay for specified ms, return 1 if key pressed early
-uint8_t delay_or_key_ms(uint16_t ms)
-{
-    uint16_t j;
-    for (j = 0; j < ms; j += 10) {
-        delay_ms(10);
-        if (!P32) return 1;
-    }
-    return 0;
-}
+
