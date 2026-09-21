@@ -4,7 +4,7 @@
 
 > **赌王不赌，股神不炒，让太阳做你的操盘手。**
 
-> **市场没有你能掌握的规律，太阳却有亘古不变的光。**
+> **市场没有你能掌握的规律，太阳却有亘[gèn]古不变的光。**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
