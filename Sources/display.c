@@ -47,13 +47,6 @@ void DisplayMeritAdd(void)
     OLED_ShowBigString(76, 0, "+1");
 }
 
-void DisplayMsg(const char *msg)
-{
-    OLED_Clear();
-    // Generic centered message (up to 8 chars)
-    OLED_ShowBigString(34, 1, msg);
-}
-
 // 9 trading actions: ²¹²Ö ¿Õ²Ö Æ½²Ö ¼õ²Ö °ë²Ö ½¨²Ö ¼Ó²Ö ³Ö²Ö Âú²Ö
 // Each action is 2 Chinese chars = 32px, centered: (128-32)/2 = 48
 static const uint8_t code tradePairs[9][2] = {

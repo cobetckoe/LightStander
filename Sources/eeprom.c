@@ -3,9 +3,9 @@
 #include "eeprom.h"
 
 // Dual backup for power-loss protection
-// Slot A: 0x0000, Slot B: 0x0010
+// Slot A: 0x0000, Slot B: 0x0200 (different sectors for brown-out safety)
 #define EEPROM_SLOT_A   0x0000
-#define EEPROM_SLOT_B   0x0010
+#define EEPROM_SLOT_B   0x0200
 #define SLOT_SIZE       5
 
 uint32_t light_merit = 0;
@@ -36,6 +36,7 @@ static uint8_t ReadSlot(uint16_t addr, uint32_t *merit, uint8_t *mode)
     // and merit is not 0xFFFFFFFF (erased EEPROM)
     if (*mode > MODE_TRADE) return 0;
     if (*merit == 0xFFFFFFFF) return 0;
+    if (*merit > 100000) return 0;
     return 1;
 }
 

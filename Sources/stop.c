@@ -1,8 +1,6 @@
 #include "config.h"
 #include "eeprom.h"
-#include "adc.h"
 #include "oled.h"
-#include "display.h"
 
 void EnterStopMode(void)
 {
@@ -41,9 +39,5 @@ void EnterStopMode(void)
     delay_ms(200);
     while (!P32);       // wait until button released
     delay_ms(50);       // debounce
-
-    ADC_Init();
-    OLED_Init();
-    DisplayStandby();
 }
 

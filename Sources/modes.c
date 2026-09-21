@@ -81,8 +81,6 @@ static void SelectStock(void)
     prefix = RandPrefix();
     bitmap = GetBitmap(prefix);
     if (bitmap == NULL) {
-        DisplayMsg("ERR");
-        delay_ms(1500);
         return;
     }
 

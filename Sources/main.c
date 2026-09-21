@@ -24,10 +24,12 @@ void main(void)
     while (1) {
         EnterStopMode();
         // Woke up from button
+        ADC_Init();
         if (CheckBattery()) {
             OLED_Off();
             continue;
         }
+        OLED_Init();
         DisplayMerit(light_merit);
         delay_ms(500);
         DisplayStandby();
@@ -44,9 +46,7 @@ void SYS_Init(void)
     P1M0 = 0x00; P1M1 = 0x00;
     P3M0 = 0x00;
     P3M1 = 0x08;                 // P3.3 high-Z for ADC
-    P5M0 = 0x30; P5M1 = 0x30;   // P5.4/P5.5 open-drain for I2C (bit4=4, bit5=5)
-
-    ADC_Init();
+    P5M0 = 0x30; P5M1 = 0x30;   // P5.4/P5.5 open-drain for I2C
 }
 
 void delay_ms(uint16_t ms)
