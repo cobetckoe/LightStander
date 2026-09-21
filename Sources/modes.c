@@ -97,7 +97,9 @@ static void SelectStock(void)
 
     stock_val = (uint32_t)prefix * 1000 + suffix;
     DisplayStock(stock_val);
-    delay_ms(1500);
+    EX0 = 1;              // Allow key press during display
+    delay_ms(800);
+    EX0 = 0;              // Re-disable for ProcessKey cleanup
 }
 
 // Randomly select one of 9 trading actions
@@ -108,7 +110,9 @@ static void SelectTradeAction(void)
     idx = FastRand() % 9;
 
     DisplayTradeAction(idx);
-    delay_ms(1500);
+    EX0 = 1;              // Allow key press during display
+    delay_ms(800);
+    EX0 = 0;              // Re-disable for ProcessKey cleanup
 }
 
 void ExecuteSelect(void)
@@ -143,9 +147,8 @@ void ExecuteSelect(void)
         SelectStock();
     }
 
-    // Show "??+1"
+    // Show "+1"
     DisplayMeritAdd();
-    delay_ms(500);
 
     light_merit++;
     SaveMeritDeferred();

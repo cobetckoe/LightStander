@@ -125,7 +125,7 @@ void OLED_Init(void)
     for (i = 0; i < 9; i++) { SCL = 0; SCL = 1; }
     I2C_Start();
     I2C_Stop();
-    delay_ms(200);
+    delay_ms(150);
     OLED_WriteCmd(0xAE);    // Display OFF
     OLED_WriteCmd(0xD5);    // Set clock divider
     OLED_WriteCmd(0x80);

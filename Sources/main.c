@@ -16,9 +16,9 @@ void main(void)
     InitRandomSeed();
     EnableKeyInterrupt();
 
-    // Boot splash: show PTS value
+    // Boot splash: show merit value
     DisplayMerit(light_merit);
-    delay_ms(500);
+    delay_ms(200);
     DisplayStandby();
 
     while (1) {
@@ -31,7 +31,7 @@ void main(void)
         }
         OLED_Init();
         DisplayMerit(light_merit);
-        delay_ms(500);
+        delay_ms(200);
         DisplayStandby();
         // Active loop: wait for user action
         while (1) {

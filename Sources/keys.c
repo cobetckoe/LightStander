@@ -61,7 +61,9 @@ uint8_t ProcessKey(void)
                     OLED_ShowCN16x2(32, 0, F16_SUI, F16_JI2);
                     OLED_ShowCN16x2(64, 0, F16_XUAN, F16_GU);
                 }
-                delay_ms(1500);
+                EX0 = 1;          // Allow key press during mode display
+                delay_ms(800);
+                EX0 = 0;
             } else {
                 // Short press
                 ExecuteSelect();
