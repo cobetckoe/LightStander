@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Single-button interface with short press (select) and long press (mode switch)
 - Dual-slot EEPROM persistence with power-loss protection (Slot A/B in different sectors)
 - SSD1306 OLED 128×32 display with 16×16 Chinese font rendering
-- Software I2C with EA interrupt protection at lowest level + I2C bus recovery
+- Software I2C with function-level EA interrupt protection (atomic display operations) + I2C bus recovery
 - Low-battery protection: auto power-off when VDD < 3.3V (bandgap-referenced)
 - Light threshold 3072 (bandgap-compensated units)
 - Boot self-test displaying light entropy accumulation value
