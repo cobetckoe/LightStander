@@ -23,13 +23,7 @@ void main(void)
 
     while (1) {
         EnterStopMode();
-        // Woke up from button
-        ADC_Init();
-        if (CheckBattery()) {
-            OLED_Off();
-            continue;
-        }
-        OLED_Init();
+        // Woke up from button ¡ª OLED already initialized by EnterStopMode
         DisplayMerit(light_merit);
         delay_ms(200);
         DisplayStandby();
