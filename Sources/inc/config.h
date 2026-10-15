@@ -24,14 +24,9 @@
 #define MAIN_Fosc               FOSC
 
 #include <stc8h.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
 #include <intrins.h>
 
 #include "def.h"
-#include "stc8h_def.h"
 
 
 //<<AICUBE_USER_INCLUDE_BEGIN>>
