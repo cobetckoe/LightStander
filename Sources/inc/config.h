@@ -30,7 +30,9 @@
 
 
 //<<AICUBE_USER_INCLUDE_BEGIN>>
-// 在此添加用户头文件包含  
+// 开机自检页开关：置 1 时开机先显示光照/带隙的原始 ADC 值约 3 秒。
+// 只在排查硬件或标定阈值时打开；量产必须置 0，否则每次开机都多等 3 秒。
+#define ADC_SELFTEST    0
 //<<AICUBE_USER_INCLUDE_END>>
 
 

@@ -26,5 +26,6 @@ void DisplayStock(uint32_t stock_code);
 void DisplayMeritAdd(uint32_t merit);
 void DisplayTradeAction(uint8_t idx);
 void DisplayLowBattery(void);
+void DisplaySelftest(void);
 
 #endif

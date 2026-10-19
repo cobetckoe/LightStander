@@ -20,22 +20,22 @@
 #include "STC8G_H_EEPROM.h"
 #include "eeprom.h"
 
-// Dual backup for power-loss protection
-// Slot A: 0x0000, Slot B: 0x0200 (different sectors for brown-out safety)
+// A/B 双备份，抗掉电。两个槽放在不同扇区，一个在擦写时掉电另一个还在。
+// Slot A: 0x0000，Slot B: 0x0200
 #define EEPROM_SLOT_A   0x0000
 #define EEPROM_SLOT_B   0x0200
 
-// Slot layout, 7 bytes:
-//   [0]     checksum = XOR of [1..6]   written FIRST, so a partial write
-//                                       can never look like a valid record
-//   [1..4]  light_merit, little endian
-//   [5]     current_mode
-//   [6]     sequence number, +1 on every save; the larger one is newer
+// 每槽 7 字节：
+//   [0]    校验字节 = [1..6] 的异或，**最先**写，所以写一半掉电
+//          也不会被当成合法记录
+//   [1..4] light_merit，小端
+//   [5]    current_mode
+//   [6]    序号，每保存一次 +1，大的那个更新
 //
-// 旧格式只有 5 字节且没有任何完整性信息：扇区擦除到一半就掉电时，
-// 残留字节只要仍落在 mode<=1 且 merit<=100000 的范围内就会被当成合法
-// 数据接受，于是出现“这次开机 79、下次开机 101”。校验字节 + 序号
-// 同时解决了「识别坏槽」和「判定哪个槽更新」两个问题。
+// 旧格式只有 5 字节，没有任何完整性信息：扇区擦到一半就掉电时，残留
+// 字节只要还落在 mode<=1、merit<=100000 范围内就会被当成合法数据，
+// 于是出现「这次开机 79、下次开机 101」。校验字节加序号同时解决了
+// 识别坏槽和判定哪个槽更新两件事。
 #define SLOT_SIZE       7
 
 uint32_t light_merit = 0;
@@ -153,9 +153,8 @@ void SaveMeritDeferred(void)
     SavePersistent();
 }
 
-// Force flush any pending save to EEPROM immediately.
-// 用于在进入低功耗或关机前确保最新数据已写入。
-// 无待写数据时直接返回，避免每次睡眠都擦写EEPROM（功耗+寿命）。
+// 把待写数据立即落盘。进休眠或关机前调一次，确保最新数据已写入。
+// 没有待写数据就直接返回，避免每次睡眠都擦写一次（功耗和寿命）。
 void FlushSave(void)
 {
     if (save_pending == 0) return;

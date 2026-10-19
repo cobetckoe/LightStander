@@ -30,11 +30,8 @@ void main(void)
 {
     SYS_Init();
 
-    // The ADC must be powered and timed before the very first read.
-    // Without this the cold-boot path ran InitRandomSeed() (32 reads) on a
-    // powered-down, untimed ADC: every read timed out and returned the 4096
-    // error sentinel, so the seed was constant and any later check that
-    // trusted a raw reading could mistake 4096 for a real value.
+    // ADC 必须先上电并配置好时序才能读。少了这一句，冷启动时
+    // InitRandomSeed() 的 32 次读取会全部超时返回 4096，种子变成定值。
     ADC_Init();
 
     OLED_Init();
@@ -42,34 +39,35 @@ void main(void)
     InitRandomSeed();
     EnableKeyInterrupt();
 
-    // Boot straight into the standby question page
-    DisplayStandby();
+#if ADC_SELFTEST
+    DisplaySelftest();
+#endif
+
+    DisplayStandby();           // 开机直接进待机页
 
     while (1) {
         EnterStopMode();
-        // Already awake (OLED re-initialised inside EnterStopMode)
+        // 醒来时 OLED 已在 EnterStopMode 里重新初始化过
         DisplayStandby();
-        // Active loop: wait for user action
         while (1) {
-            if (ProcessKey()) break;  // executed selection, back to sleep
+            if (ProcessKey()) break;    // 已经执行完一次选择，回休眠
         }
     }
 }
 
 void SYS_Init(void)
 {
-    // GPIO config
     P1M0 = 0x00; P1M1 = 0x00;
     P3M0 = 0x00;
-    P3M1 = 0x08;                 // P3.3 high-Z for ADC
-    P5M0 = 0x30; P5M1 = 0x30;   // P5.4/P5.5 open-drain for I2C
+    P3M1 = 0x08;                // P3.3 高阻，留给 ADC
+    P5M0 = 0x30; P5M1 = 0x30;   // P5.4/P5.5 开漏，给 I2C 用
 }
 
 void delay_ms(uint16_t ms)
 {
     uint16_t i;
     do {
-        i = 2048;  // ~1.17ms at 24MHz (power-of-2, avoids div)
+        i = 2048;               // 24MHz 下约 1.17ms，取 2 的幂省一次除法
         while (--i);
     } while (--ms);
 }
