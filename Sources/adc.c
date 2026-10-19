@@ -23,12 +23,28 @@
 #define ADC_CH_LIGHT    3       // P3.3 = ADC3 on STC8G1K08A
 #define ADC_CH_BANDGAP  15      // Internal 1.19V reference
 
-// Light threshold (compensated units)
-//   comp = V_P3.3 / 1.19V * 4095，分压 V_P3.3 = VDD * LDR / (Rtop + LDR)
-//   生产标定值 3072：采样值需接近/达到 3072 才允许执行选股或操盘。
-//   对应 Rtop=2K 时 LDR≈0.54~0.84KΩ（随VDD略变）。
-//   实机偏差时：在目标光照下读 comp，阈值设为略低于该值即可。
-#define LIGHT_THRESHOLD_ON   3072
+// ---- 光照门禁 ----
+// 接线（2026-11 起）：VDD ──[100K]── P3.3 ──[LDR]── GND
+//                      上臂 100K，光敏电阻在下臂。
+//
+//   comp = V_P3.3 / 1.19V * 4095
+//   V_P3.3 = VDD * LDR / (100K + LDR)
+//
+//   完全遮挡  LDR≈500K~1M → comp≈9500~10500   （接近 VDD）
+//   室内正常  LDR≈10K~20K → comp≈1050~2100
+//   强光直射  LDR≈1K      → comp≈110
+//
+// 所以「光越强 comp 越小」，判据必须是 comp < 阈值。
+// 旧版上臂是 2K 且光敏在上臂（光越强 comp 越大），判据是 comp > 3072；
+// 换成 100K 并把光敏移到下臂后，原来的 > 判断整个反了过来——遮挡时
+// comp 反而涨到 10000 以上，于是完全遮住也照样能选股。
+//
+// 阈值 4500 约对应 V_P3.3 < 1.31V：
+//   VDD=3.0V 时 LDR < 77K 通过；VDD=3.7V 时 LDR < 55K 通过。
+//   室内光（10~20K）稳过，遮挡（≥500K，comp≈9500）稳定拦截，余量充足。
+//
+// 若日后把 100K 与光敏电阻位置互换，只需把下面的比较方向改成 >。
+#define LIGHT_THRESHOLD_ON   4500
 
 void ADC_Init(void)
 {
@@ -83,7 +99,8 @@ uint8_t IsLightSufficient(void)
     if (bg_sum == 0) bg_sum = 1;
     compensated = ((uint32_t)light_sum * 4095U) / bg_sum;
 
-    return (compensated > LIGHT_THRESHOLD_ON) ? 1 : 0;
+    // 光敏电阻在下臂：光越强，comp 越小
+    return (compensated < LIGHT_THRESHOLD_ON) ? 1 : 0;
 }
 
 // Check battery voltage via bandgap reference.
