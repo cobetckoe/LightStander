@@ -46,9 +46,9 @@ void main(void)
     DisplayStandby();           // 开机直接进待机页
 
     while (1) {
+        // EnterStopMode 会先熄屏、把待机页写进显存再休眠，所以这里
+        // 不用画；醒来由 OLED_Wake 直接把那一帧点亮，中间没有空屏。
         EnterStopMode();
-        // 醒来时 OLED 已在 EnterStopMode 里重新初始化过
-        DisplayStandby();
         while (1) {
             if (ProcessKey()) break;    // 已经执行完一次选择，回休眠
         }

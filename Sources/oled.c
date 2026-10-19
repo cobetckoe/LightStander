@@ -183,6 +183,11 @@ void OLED_Init(void)
     //
     // 每轮之间那次 80ms 很关键：第一遍已经把电荷泵打开，等电源真正
     // 建起来，第二遍的 0xAF 才落在稳定电压上。
+    //
+    // 注意每轮末尾**不发 0xAF**。GDDRAM 上电是随机内容，只要显示一开
+    // 就会把雪花画出来，下一轮 0xAE 又关掉，反复三轮就是用户看到的
+    // 「唤醒后闪几下」。这里全程保持关闭，等最后清完显存再统一开屏，
+    // 屏幕从黑直接过渡到第一帧画面，中间不出现任何雪花。
     for (t = 0; t < 3; t++) {
         if (t) {
             SDA = 1;
@@ -201,8 +206,8 @@ void OLED_Init(void)
         OLED_WriteCmd(0x40);    // 起始行 0
         OLED_WriteCmd(0x8D);    // 电荷泵
         OLED_WriteCmd(0x14);    // 打开
-        // 必须等电荷泵把 VCC 抬上来再开显示，否则会出现
-        // 「显示已开、屏幕却全黑」。
+        // 必须等电荷泵把 VCC 抬上来再往下走，否则后面写进显存的
+        // 内容是打给一颗还没醒的芯片。
         delay_ms(20);
         OLED_WriteCmd(0x20);    // 寻址模式
         OLED_WriteCmd(0x02);    // 页寻址
@@ -218,17 +223,16 @@ void OLED_Init(void)
         OLED_WriteCmd(0x40);
         OLED_WriteCmd(0xA4);    // 按显存内容显示
         OLED_WriteCmd(0xA6);    // 正常显示（非反色）
-        OLED_WriteCmd(0xAF);    // 开显示
     }
 
-    // 再确认一次电荷泵和显示开关，救一下前面恰好落在
-    // 面板未就绪窗口里的那一次。
+    // 三遍命令都发完了，电荷泵已经稳稳在工作。现在把显存清干净，
+    // 清完再开屏——这一步之后屏幕上就是纯黑，不再有随机雪花。
+    OLED_Clear();
+
     OLED_WriteCmd(0x8D);
     OLED_WriteCmd(0x14);
-    delay_ms(120);
-    OLED_WriteCmd(0xAF);
-
-    OLED_Clear();               // 上电显存是随机的，不清会显出一片雪花
+    delay_ms(20);
+    OLED_WriteCmd(0xAF);    // 开显示
 }
 
 void OLED_Off(void)
@@ -236,6 +240,41 @@ void OLED_Off(void)
     OLED_WriteCmd(0xAE);    // Display OFF
     OLED_WriteCmd(0x8D);    // Charge pump
     OLED_WriteCmd(0x10);    // Disable
+}
+
+// 从 STOP 唤醒时用这个，不走 OLED_Init 那套冷启动流程。
+//
+// 睡眠期间面板 VDD 一直挂着电池，只是电荷泵关了，芯片内部状态全都还在：
+// 显存内容、寻址模式、对比度、段/COM 方向一个都没丢。所以不需要重新
+// 配置一遍，只要把电荷泵和显示打开就行。
+//
+// 这么做有两个好处：一是快，从按下按键到看见画面只要几十毫秒，而不是
+// 冷启动那一秒多的泄放加等待；二是不闪，OLED_Init 虽然已经改成清完
+// 显存才开屏，但那是为冷上电准备的，唤醒时显存里本来就存着正确的
+// 待机页，直接点亮就完事。
+void OLED_Wake(void)
+{
+    // 睡眠时引脚恢复成了准双向，这里先切回开漏再碰总线。
+    P5M0 = 0x30; P5M1 = 0x30;
+    SDA = 1; SCL = 1;
+    delay_ms(2);
+
+    // 唤醒瞬间面板可能正在从电荷泵关断中恢复，SDA 若被它拉着，
+    // 打几个时钟把它放出来，避免第一笔事务被吞。
+    SWI2C_Start();
+    SWI2C_Stop();
+    delay_ms(5);
+
+    OLED_WriteCmd(0x8D);    // 电荷泵
+    OLED_WriteCmd(0x14);    // 打开
+    delay_ms(20);           // 等 VCC 抬起来再开屏
+
+    OLED_WriteCmd(0xAE);    // 先确保是关的
+    OLED_WriteCmd(0x20);    // 寻址模式，顺手重发一遍
+    OLED_WriteCmd(0x02);    // 页寻址
+    OLED_WriteCmd(0xA4);    // 按显存内容显示
+    OLED_WriteCmd(0xA6);    // 正常显示
+    OLED_WriteCmd(0xAF);    // 开显示
 }
 
 void OLED_Clear(void)

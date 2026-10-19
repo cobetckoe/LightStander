@@ -22,6 +22,7 @@
 #include "config.h"
 
 void OLED_Init(void);
+void OLED_Wake(void);
 void OLED_Off(void);
 void OLED_Clear(void);
 void OLED_ShowBigStringStep(uint8_t x, uint8_t page, const char *str, uint8_t step);
