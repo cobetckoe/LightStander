@@ -179,12 +179,25 @@ void OLED_Init(void)
     for (i = 0; i < 9; i++) { SCL = 0; I2C_DLY(); SCL = 1; I2C_DLY(); }
     SWI2C_Start();
     SWI2C_Stop();
-    delay_ms(150);              // let the panel charge pump settle
+    delay_ms(120);              // let the panel charge pump settle
 
     // The whole sequence is retried, because a two-byte command cannot
     // be retried on its own without desyncing the panel's argument
     // state. A final address probe confirms the panel came up.
-    for (t = 0; t < 3; t++) {
+    //
+    // 重试上限从 3 提到 5：偶发黑屏的板子上，前 3 次可能都落在电荷泵
+    // 尚未稳定或 SDA 仍被拉住的窗口里，此时旧代码静默退出，屏幕就
+    // 一直黑着，直到用户重新烧录（相当于一次完整的掉电重启）。
+    // 每次重试前都重做一遍总线释放，把「SDA 卡住」这种情况也覆盖掉。
+    for (t = 0; t < 5; t++) {
+        if (t) {
+            // 重新走一遍总线解锁，再等电荷泵
+            SDA = 1;
+            for (i = 0; i < 9; i++) { SCL = 0; I2C_DLY(); SCL = 1; I2C_DLY(); }
+            SWI2C_Start();
+            SWI2C_Stop();
+            delay_ms(60);
+        }
         OLED_WriteCmd(0xAE);    // Display OFF
         OLED_WriteCmd(0xD5);    // Set clock divider
         OLED_WriteCmd(0x80);
@@ -195,6 +208,11 @@ void OLED_Init(void)
         OLED_WriteCmd(0x40);    // Set start line = 0
         OLED_WriteCmd(0x8D);    // Charge pump
         OLED_WriteCmd(0x14);    // Enable charge pump
+        // 必须等电荷泵把 VCC 抬上来再发 0xAF（Display ON）。
+        // 紧接着发 0xAF 时，面板常常已经收到了点亮命令但泵还没建立
+        // 足够电压，于是「显示已开、屏幕却全黑」——这正是偶发黑屏
+        // 最典型的表现，而且重新烧录（更长的上电过程）时又恢复正常。
+        delay_ms(20);
         OLED_WriteCmd(0x20);    // Memory addressing mode
         OLED_WriteCmd(0x02);    // Page addressing mode
         OLED_WriteCmd(0xA1);    // Segment remap: 180° rotation (COL0 = right)

@@ -192,8 +192,8 @@ chk = merit[0]^merit[1]^merit[2]^merit[3]^mode^seq   ← 最先写入
 
 | 区域 | 大小 | 内容 |
 |------|------|------|
-| Code | ~7981 B | 程序代码 |
+| Code | ~8091 B | 程序代码（Const/Font 已计入，Keil 报告的是最终链接体积） |
 | Const | ~1.5 KB | 股票位图（bitmap.h） |
 | Font | 864 B | 27×32 字模（font_cn_16.c） |
 | ASCII Font | 60 B | 12×5 ASCII 字模（oled.c） |
-| **总计** | **~7981 B** | **上限 8192 B（余量 211 B）** |
+| **总计** | **8091 B** | **上限 8192 B（余量 101 B）** |
