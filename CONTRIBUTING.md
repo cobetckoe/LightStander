@@ -25,7 +25,7 @@ Thank you for your interest in contributing!
 3. Flash the hex file to MCU via STC-ISP
 
 ### Code Size Constraint
-The STC8G1K08A has 8KB Flash. Current usage is ~8097 bytes (8192 limit, 98.8% utilization). **Any new feature must not exceed the 8KB limit.** If you need to add functionality, consider removing unused features first. Remember: this project is about making the impossible fit in 8KB.
+The STC8G1K08A has 8KB Flash. Current usage is 7592 bytes (8192 limit, 92.7% utilization). **Any new feature must not exceed the 8KB limit.** If you need to add functionality, consider removing unused features first. Remember: this project is about making the impossible fit in 8KB.
 
 ## Guidelines
 
@@ -33,7 +33,7 @@ The STC8G1K08A has 8KB Flash. Current usage is ~8097 bytes (8192 limit, 98.8% ut
 - Use `code` keyword for constant data in Flash
 - Prefer `static` functions to reduce code size
 - Test on real hardware before submitting
-- Update `bitmap.h` and `RandPrefix()` counts if adding/removing stock codes
+- Update `bitmap.h` and `prefix_tab[]` weights in `modes.c` if adding/removing stock codes
 
 ## Reporting Issues
 
