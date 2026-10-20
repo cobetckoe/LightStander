@@ -25,7 +25,7 @@ Thank you for your interest in contributing!
 3. Flash the hex file to MCU via STC-ISP
 
 ### Code Size Constraint
-The STC8G1K08A has 8KB Flash. Current usage is 7592 bytes (8192 limit, 92.7% utilization). **Any new feature must not exceed the 8KB limit.** If you need to add functionality, consider removing unused features first. Remember: this project is about making the impossible fit in 8KB.
+The STC8G1K08A has 8KB Flash. Current usage is 7669 bytes (8192 limit, 93.6% utilization). **Any new feature must not exceed the 8KB limit.** If you need to add functionality, consider removing unused features first. Remember: this project is about making the impossible fit in 8KB.
 
 ## Guidelines
 

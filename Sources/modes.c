@@ -98,8 +98,12 @@ static void SelectStock(void)
     do {
         suffix = Rand16() % 1000;
         if (++tries > 50) {
-            // 50 次都没命中就给个兵底值，避免小概率死循环
-            suffix = 1;
+            // 重抽 50 次仍未命中（前缀 003 只有 42 支，概率约 11.7%）。
+            // 这里不能写死一个后缀：605/688/000/001/002/300 的后缀 1
+            // 都不在表内。按序扫位图取第一个有效值，必然落在真实代码上。
+            for (suffix = 0; suffix < 1000; suffix++) {
+                if (BMP_HAS(bitmap, suffix)) break;
+            }
             break;
         }
     } while (!BMP_HAS(bitmap, suffix));

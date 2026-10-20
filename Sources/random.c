@@ -52,9 +52,11 @@ void ReSeedFromLight(void)
     }
 }
 
+// 增量必须是奇数。偶数增量会让状态最低位恒定，可达状态只剩 32768
+// 个而不是 65536，等于把周期砍半。
 uint8_t FastRand(void)
 {
-    rand_state = rand_state * 0x9D65 + 0x3B7A;
+    rand_state = rand_state * 0x9D65 + 0x3B7B;
     return (uint8_t)(rand_state ^ (rand_state >> 8));
 }
 
