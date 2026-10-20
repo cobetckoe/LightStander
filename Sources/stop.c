@@ -23,6 +23,17 @@
 #include "display.h"
 #include "keys.h"
 
+// 唤醒后恢复中断和引脚配置。三处都要用，抽出来免得漏掉某一条。
+static void ResumeAfterWake(void)
+{
+    SYS_Init();             // 引脚回到工作配置
+    IT0 = 1;                // 工作期间用下降沿，配合 ISR 的防重入
+    ClearKeyPending();      // 唤醒那一下按键不算一次选择
+    EX0 = 1;
+    EA  = 1;
+    ADC_Init();             // STOP 期间 ADC 掉电了
+}
+
 void EnterStopMode(void)
 {
     for (;;) {
@@ -32,18 +43,15 @@ void EnterStopMode(void)
         ClearKeyPending();
 
         FlushSave();            // 睡觉前把待写的功德值落盘
-
         ADC_CONTR = 0;
 
-        // 先熄屏，再把待机页写进显存。
+        // 熄屏就够了，不必先把待机页写进显存。
         //
-        // 写显存走的是 I2C 逻辑事务，只要面板 VDD 在（它一直挂着电池）
-        // 就能写，跟电荷泵开没开无关——电荷泵只负责给 OLED 像素的驱动
-        // 高压。所以先关屏再画，这一帧用户完全看不到；而醒来时显存里
-        // 已经是正确的待机页，OLED_Wake 一开屏就是它，不会先清空再出字。
-        // 那个「先清空再出字」就是用户说的闪一下。
+        // 以前这里是「先熄屏再画待机页」，指望醒来直接点亮显存里的内容。
+        // 面板在睡眠期间有可能自己复位（电池偏弱时漏电流会把它拖到 POR
+        // 门限以下），显存跟着一起清零，那一页就白画了。既然唤醒后无论如何
+        // 都要重画，睡前这一遍就没有意义，省掉它还能让入睡快一点。
         OLED_Off();
-        DisplayStandby();
 
         // P3.3 留给 ADC 做高阻输入，其余引脚恢复 SYS_Init 的配置
         P1M0 = 0x00; P1M1 = 0x00;
@@ -70,33 +78,25 @@ void EnterStopMode(void)
         EX0 = 1;
         EA  = 1;
 
-        // 引脚此刻仍然被拉着就先别睡，交回主循环
-        if (!P32) {
-            IT0 = 1;
-            OLED_Wake();        // 屏刚关掉、显存里是待机页，点亮就行
-            return;
+        if (P32) {
+            delay_ms(10);       // 等接触抖动过去
+            ClearKeyPending();
+            P32 = 1;
+            PCON |= 0x02;
+            _nop_();
+            _nop_();
         }
-        delay_ms(10);           // 等接触抖动过去
-        ClearKeyPending();
-        P32 = 1;
-
-        PCON |= 0x02;
-        _nop_();
-        _nop_();
+        // 引脚还是低就不进 STOP，直接走下面的收尾。
+        // 这条路径同样要过 ResumeAfterWake：上面已经把 ADC_CONTR 清零、
+        // 引脚也改回了休眠配置，不恢复的话后面每次读 ADC 都超时返回
+        // 4096，低电量和弱光判断会静默失效。
 
         // ---- 唤醒后从这里继续 ----
 
-        IT0 = 1;
-        SYS_Init();             // 引脚回到工作配置
-        ClearKeyPending();      // 唤醒那一下按键不算一次选择
-        IT0 = 1;
-        EX0 = 1;
-        EA  = 1;
+        ResumeAfterWake();
 
-        ADC_Init();
-
-        // 面板只是关了电荷泵，VDD 一直挂着电池，内部状态和显存都还在，
-        // 所以走快速唤醒而不是冷启动那一整套。差出这一秒多，手感区别很大。
+        // 重发整表配置，全程关屏。这里不能走 OLED_Init：那要先泄放
+        // 550ms 残压再清显存，用户会看见一段黑屏加一次重画。
         OLED_Wake();
 
         // 醒来时手指可能还按在键上，等它松开再走，否则接着的
@@ -104,14 +104,19 @@ void EnterStopMode(void)
         WaitButtonRelease();
         ClearKeyPending();
 
-        // 电量太低就亮一下电池图标再睡回去
+        // 电量太低就亮一下电池图标，然后睡回去
         if (CheckBattery()) {
             DisplayLowBattery();
-            // 图标看完先熄屏再回循环开头。否则循环开头的 DisplayStandby()
+            // 图标看完先熄屏再回循环开头，否则下一轮入睡前那一帧
             // 会在亮着的屏幕上演一次「清空再出字」，又能看到闪一下。
             OLED_Off();
             continue;
         }
+
+        // 正常路径：在黑屏状态下把待机页画好，再一次性开屏。
+        // 用户看到的第一帧就是完整的待机页，中间没有空白也没有重画。
+        DisplayStandby();
+        OLED_On();
         return;
     }
 }

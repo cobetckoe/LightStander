@@ -62,6 +62,13 @@ void WaitButtonRelease(void)
     delay_ms(80);               // 松开消抖
 }
 
+// 回到「等下一次按键」的状态：丢掉残留事件，重新开中断。
+static void KeyIdle(void)
+{
+    ClearKeyPending();
+    EX0 = 1;
+}
+
 // 返回 1 = 回休眠，0 = 继续保持工作
 uint8_t ProcessKey(void)
 {
@@ -69,55 +76,50 @@ uint8_t ProcessKey(void)
     uint8_t i;
 
     while (1) {
-        if (key_pending) {
-            key_pending = 0;
-            idle = 0;
-
-            delay_ms(80);
-            if (P32) {
-                // 已经松开，当作抖动忽略，顺带清掉残留标志
-                ClearKeyPending();
-                EX0 = 1;
-                continue;
+        if (!key_pending) {
+            // 没按键，累加空闲时间，到点就熄屏回去睡
+            delay_ms(10);
+            idle++;
+            if (idle >= IDLE_TIMEOUT) {
+                OLED_Off();
+                return 1;
             }
-
-            // 按住不放：量一下时长，超过 0.9s 算长按
-            for (i = 0; i < 90; i++) {
-                delay_ms(10);
-                if (P32) break;
-            }
-
-            if (i >= 90) {
-                // 长按：立刻切模式并刷新显示，不用等松手
-                current_mode = (current_mode == MODE_STOCK) ? MODE_TRADE : MODE_STOCK;
-                SavePersistent();
-                DisplayStandby();
-                WaitButtonRelease();
-            } else {
-                // 短按：跑一次选股/操盘，内部会依次显示结果页、功德页，
-                // 最后自己回待机
-                uint8_t low_bat = ExecuteSelect();
-                WaitButtonRelease();
-                if (low_bat) {
-                    OLED_Off();     // 低电量，直接熄屏回休眠
-                    ClearKeyPending();
-                    EX0 = 1;
-                    return 1;
-                }
-            }
-
-            ClearKeyPending();
-            EX0 = 1;
             continue;
         }
 
-        // 没按键，累加空闲时间
-        delay_ms(10);
-        idle++;
-        if (idle >= IDLE_TIMEOUT) {
-            OLED_Off();
-            return 1;
+        key_pending = 0;
+        idle = 0;
+        delay_ms(80);           // 消抖
+
+        if (P32) {              // 已经松开，当作抖动忽略
+            KeyIdle();
+            continue;
         }
+
+        // 按住不放：量一下时长，超过 0.9s 算长按
+        for (i = 0; i < 90; i++) {
+            delay_ms(10);
+            if (P32) break;
+        }
+
+        if (i >= 90) {
+            // 长按：立刻切模式并刷新显示，不用等松手
+            current_mode = (current_mode == MODE_STOCK) ? MODE_TRADE : MODE_STOCK;
+            SavePersistent();
+            DisplayStandby();
+            WaitButtonRelease();
+        } else {
+            // 短按：跑一次选股/操盘，内部会依次显示结果页、功德页，
+            // 最后自己回待机。低电量时它只亮一下电池图标就返回。
+            if (ExecuteSelect()) {
+                OLED_Off();     // 低电量，直接熄屏回休眠
+                KeyIdle();
+                return 1;
+            }
+            WaitButtonRelease();
+        }
+
+        KeyIdle();
     }
 }
 

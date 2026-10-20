@@ -30,84 +30,81 @@
 #define MERIT_PAGE_HOLD_MS    1000
 #define LOW_LIGHT_WAIT_MS      600
 
-// 各前缀的股票数，顺序与 prefix_list 一致，也与旧 if 梯子相同，
-// 所以选股分布不变。做成表是为了让 RandPrefix 变成查表，而不是 11 次比较。
-static uint16_t code prefix_weight[12] = {
-    875, 235, 627, 113, 621, 506, 122, 977, 42, 979, 471, 346
-};
-static uint16_t code prefix_list[12] = {
-    600, 601, 603, 605, 688, 0, 1, 2, 3, 300, 301, 920
+// 前缀表：一个结构体把「权重 / 码值 / 位图表」绑在一起，
+// 省掉原来那个 12 分支的 GetBitmap switch。三张并行的表容易改漏一行，
+// 合成一张之后加前缀只要在一个地方加一条。
+typedef struct {
+    uint16_t      weight;
+    uint16_t      prefix;
+    uint8_t code *bitmap;
+} PrefixEnt;
+
+static code const PrefixEnt prefix_tab[12] = {
+    { 875, 600, bitmap_600 },
+    { 235, 601, bitmap_601 },
+    { 627, 603, bitmap_603 },
+    { 113, 605, bitmap_605 },
+    { 621, 688, bitmap_688 },
+    { 506,   0, bitmap_000 },
+    { 122,   1, bitmap_001 },
+    { 977,   2, bitmap_002 },
+    {  42,   3, bitmap_003 },
+    { 979, 300, bitmap_300 },
+    { 471, 301, bitmap_301 },
+    { 346, 920, bitmap_920 },
 };
 
-static uint8_t code *GetBitmap(uint16_t prefix)
-{
-    switch (prefix) {
-        case 600: return bitmap_600;
-        case 601: return bitmap_601;
-        case 603: return bitmap_603;
-        case 605: return bitmap_605;
-        case 688: return bitmap_688;
-        case 0:   return bitmap_000;
-        case 1:   return bitmap_001;
-        case 2:   return bitmap_002;
-        case 3:   return bitmap_003;
-        case 300: return bitmap_300;
-        case 301: return bitmap_301;
-        case 920: return bitmap_920;
-        default:  return NULL;
-    }
-}
+#define PREFIX_CNT      (sizeof(prefix_tab) / sizeof(prefix_tab[0]))
 
-static uint8_t BitmapCheck(uint8_t code *bmp, uint16_t suffix)
-{
-    uint8_t byte_idx = suffix >> 3;
-    uint8_t bit_idx  = suffix & 0x07;
-    return (bmp[byte_idx] >> bit_idx) & 0x01;
-}
+// 位图按位标记某个后缀存在。suffix 一定 < 1000，所以位图 125 字节。
+#define BMP_HAS(bmp, n) (((bmp)[(n) >> 3] >> ((n) & 0x07)) & 0x01)
 
 static uint16_t Rand16(void)
 {
     return (uint16_t)FastRand() | ((uint16_t)FastRand() << 8);
 }
 
-static uint16_t RandPrefix(void)
+// 按各前缀的股票数加权抽取，总权重就是各只股票总数。
+// 以前这里写死 5914，改表时忘掉同步就会偏分布；现在求和。
+static uint8_t RandPrefixIdx(void)
 {
-    // 按各前缀股票数加权，总数 5914
-    uint16_t r = Rand16() % 5914;
+    uint16_t total = 0;
+    uint16_t r;
     uint8_t i;
-    for (i = 0; i < 12; i++) {
-        if (r < prefix_weight[i]) return prefix_list[i];
-        r -= prefix_weight[i];
+
+    for (i = 0; i < PREFIX_CNT; i++) total += prefix_tab[i].weight;
+
+    r = Rand16() % total;
+    for (i = 0; i < PREFIX_CNT; i++) {
+        if (r < prefix_tab[i].weight) return i;
+        r -= prefix_tab[i].weight;
     }
-    return 920;
+    return PREFIX_CNT - 1;      // 越界兜底，正常走不到
 }
 
 static void SelectStock(void)
 {
-    uint16_t prefix;
+    uint8_t   idx;
     uint8_t code *bitmap;
-    uint8_t tries = 0;
-    uint16_t suffix;
-    uint32_t stock_val;
+    uint8_t   tries = 0;
+    uint16_t  suffix;
+    uint32_t  stock_val;
 
-    prefix = RandPrefix();
-    bitmap = GetBitmap(prefix);
-    if (bitmap == NULL) {
-        return;
-    }
+    idx = RandPrefixIdx();
+    bitmap = prefix_tab[idx].bitmap;
 
+    // 抽到不在位图里的代码就重抽。位图只标记真实存在的股票，
+    // 所以这里必须校验，否则会显示出不存在的代码。
     do {
-        suffix = (uint16_t)FastRand() | ((uint16_t)FastRand() << 8);
-        suffix = suffix % 1000;
-        tries++;
-        if (tries > 50) {
+        suffix = Rand16() % 1000;
+        if (++tries > 50) {
             // 50 次都没命中就给个兵底值，避免小概率死循环
             suffix = 1;
             break;
         }
-    } while (!BitmapCheck(bitmap, suffix));
+    } while (!BMP_HAS(bitmap, suffix));
 
-    stock_val = (uint32_t)prefix * 1000 + suffix;
+    stock_val = (uint32_t)prefix_tab[idx].prefix * 1000 + suffix;
     DisplayStock(stock_val);
     // 结果页期间 EX0 保持关着，否则按键会攒下 key_pending，
     // 被 ProcessKey 当成一次新的选择。
@@ -124,8 +121,34 @@ static void SelectTradeAction(void)
     delay_ms(RESULT_PAGE_HOLD_MS);
 }
 
+// 低光提示页：5 个汉字，墨迹 15px、间距 4px，占 18..108（91px，居中）
+static code const struct { uint8_t x; uint8_t ch; } lowlight_tab[5] = {
+    { 18, F16_QING },
+    { 37, F16_ZHAN },
+    { 56, F16_ZAI  },
+    { 75, F16_GUANG },
+    { 94, F16_LI   },
+};
+
+// 等一小会儿或者按键提前结束。返回前把按键松开，免得残留的按住
+// 被上层当成一次新的选择。
+static void HoldOrSkip(uint16_t ms)
+{
+    uint16_t t;
+
+    for (t = 0; t < ms / 10; t++) {
+        delay_ms(10);
+        if (!P32) {
+            WaitButtonRelease();
+            return;
+        }
+    }
+}
+
 uint8_t ExecuteSelect(void)
 {
+    uint8_t i;
+
     // 低电量：显示图标后立刻回休眠
     if (CheckBattery()) {
         DisplayLowBattery();
@@ -133,23 +156,12 @@ uint8_t ExecuteSelect(void)
     }
 
     if (!IsLightSufficient()) {
-        uint16_t wait = 0;
+        OLED_RowGap(0);
         OLED_Clear();
-        // 5 个字，墨迹 15px、间距 4px，占 18..108（91px，居中）
-        OLED_ShowCN16(18, 0, F16_QING);
-        OLED_ShowCN16(37, 0, F16_ZHAN);
-        OLED_ShowCN16(56, 0, F16_ZAI);
-        OLED_ShowCN16(75, 0, F16_GUANG);
-        OLED_ShowCN16(94, 0, F16_LI);
-        // 最多等 600ms，按一下键可以提前走
-        while (wait < (LOW_LIGHT_WAIT_MS / 10)) {
-            delay_ms(10);
-            wait++;
-            if (!P32) {
-                WaitButtonRelease();
-                break;
-            }
+        for (i = 0; i < 5; i++) {
+            OLED_ShowCN16(lowlight_tab[i].x, 0, lowlight_tab[i].ch);
         }
+        HoldOrSkip(LOW_LIGHT_WAIT_MS);
         DisplayStandby();
         return 0;
     }

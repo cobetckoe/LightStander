@@ -40,14 +40,17 @@ void main(void)
     EnableKeyInterrupt();
 
 #if ADC_SELFTEST
-    DisplaySelftest();
+    DisplaySelftest();          // 调试页，自己会开屏
 #endif
 
-    DisplayStandby();           // 开机直接进待机页
+    // 开机这一屏先画好再点亮。OLED_Init 退出时是关屏状态，如果先开屏，
+    // 用户会看到一瞬间的空白页再跳成待机页。
+    DisplayStandby();
+    OLED_On();
 
     while (1) {
-        // EnterStopMode 会先熄屏、把待机页写进显存再休眠，所以这里
-        // 不用画；醒来由 OLED_Wake 直接把那一帧点亮，中间没有空屏。
+        // 进入休眠前会先熄屏；唤醒时由 EnterStopMode 自己重发配置、
+        // 重画待机页再开屏，回到这里屏幕已经是亮的待机页，不用再画。
         EnterStopMode();
         while (1) {
             if (ProcessKey()) break;    // 已经执行完一次选择，回休眠

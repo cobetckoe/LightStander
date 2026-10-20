@@ -96,6 +96,9 @@ void DisplayLowBattery(void)
     OLED_Clear();
     // 32x16 图标由两个 16px 拼成，墨迹 27px 宽，x=48 时居中
     OLED_ShowCN16x2(48, 0, F16_BAT1, F16_BAT2);
+    // 先点亮再等。从 STOP 唤醒的那条路径上，面板被 OLED_Wake 配置成
+    // 关屏状态，不在这里开屏的话，接下来这 1.2 秒是画给一块黑屏看的。
+    OLED_On();
     delay_ms(1200);
 }
 
@@ -160,11 +163,13 @@ void DisplaySelftest(void)
     OLED_Clear();
     OLED_ShowBigNum6Step(CN_ROW_X, 0, (uint32_t)ReadLightADC(),   NUM_STEP);
     OLED_ShowBigNum6Step(CN_ROW_X, 2, (uint32_t)ReadBandgapADC(), NUM_STEP);
+    OLED_On();              // 画完再点亮，OLED_Init 退出时是关屏的
     // 最多显示 3 秒，按一下按键可立即跳过
     for (k = 0; k < 30; k++) {
         if (!P32) break;
         delay_ms(100);
     }
     WaitButtonRelease();
+    // 这里不熄屏：电荷泵是开着的，交给 main 走统一的「画待机页再点亮」。
 }
 #endif

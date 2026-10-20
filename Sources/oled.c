@@ -142,12 +142,73 @@ static void OLED_WriteCmd(uint8_t cmd)
     SWI2C_Stop();
 }
 
-// ---- OLED API ----
+// 画一根时钟线，用来把卡在半个字节里的移位寄存器冲干净。
+// SDA 必须由主控保持高电平：面板被卡住时会把 SDA 拉着不放，
+// 这时候主控不去驱动它，打再多时钟也放不开。
+static void I2C_BusRecover(void)
+{
+    uint8_t i;
 
+    SDA = 1;
+    for (i = 0; i < 20; i++) {
+        SCL = 0; I2C_DLY();
+        SCL = 1; I2C_DLY();
+    }
+    SWI2C_Start();
+    SWI2C_Stop();
+}
+
+// 显示配置表：每条一个字节的命令，加一个字节的参数。
+// 单字节命令的参数位置填 CFG_NA，这样增删命令都不用担心数错参数个数。
+//
+// 冷启动和唤醒都走这张表。以前唤醒只补发几条命令，理由是「睡眠时面板
+// 一直有电，状态不会丢」——这个假设只在短时间休眠时成立。电池电压偏低、
+// 或者面板自己的复位电路被 I2C 线上的漏电流慢慢拖到 POR 门限以下时，
+// 面板会在睡眠期间悄悄复位，寄存器全回出厂默认值，于是出现三种现象：
+//   0xC8 丢失 → COM 扫描方向反了 → 画面上下颠倒
+//   0x81 从 0xCF 回到 0x7F、0xD9 从 0xF1 回到 0x22 → 颜色很淡
+//   0xA8 从 0x1F(32路) 回到 0x3F(64路) → 多扫出来的行 → 一行乱码
+// 所以唤醒必须把整张表重发一遍。命令都是幂等的，重发只多花几十毫秒。
+#define CFG_NA          0xFF
+
+static code const uint8_t oled_cfg[][2] = {
+    { 0xAE, CFG_NA },   // 关显示，配置期间不让人看见中间状态
+    { 0xD5, 0x80   },   // 时钟分频
+    { 0xA8, 0x1F   },   // 多路复用比，128x32 用 31
+    { 0xD3, 0x00   },   // 显示偏移
+    { 0x40, CFG_NA },   // 起始行 0
+    { 0x8D, 0x14   },   // 电荷泵开
+    { 0x20, 0x02   },   // 页寻址
+    { 0xA1, CFG_NA },   // 段重映射（列 0 在最右，配合 180° 旋转）
+    { 0xC8, CFG_NA },   // COM 扫描方向，与 0xA1 一起构成 180° 旋转
+    { 0xDA, 0x02   },   // COM 引脚配置，128x32
+    { 0x81, 0xCF   },   // 对比度
+    { 0xD9, 0xF1   },   // 预充周期
+    { 0xDB, 0x40   },   // VCOMH
+    { 0xA4, CFG_NA },   // 按显存内容显示
+    { 0xA6, CFG_NA },   // 正常显示（非反色）
+};
+
+#define CFG_CNT         (sizeof(oled_cfg) / sizeof(oled_cfg[0]))
+
+// 把配置表整串发下去。SSD1306 的命令之间不需要间隔，所以一口气发完。
+// 表尾不发 0xAF，开屏由调用方在确认显存已经干净之后自己做。
+static void OLED_LoadConfig(void)
+{
+    uint8_t i;
+
+    for (i = 0; i < CFG_CNT; i++) {
+        OLED_WriteCmd(oled_cfg[i][0]);
+        if (oled_cfg[i][1] != CFG_NA) {
+            OLED_WriteCmd(oled_cfg[i][1]);
+        }
+    }
+}
+
+// 冷启动：面板可能处于任何状态，必须先泄放残压把它逼回 POR。
+// 结束时保持关屏，调用方把第一屏画好再调 OLED_On()。
 void OLED_Init(void)
 {
-    uint8_t i, t;
-
     // 先把两根线拉低放一会儿，泄掉面板上的残压。
     //
     // 只断正极再上电时，SSD1306 的 VDD 会经 I2C 上拉电阻和各引脚 ESD
@@ -164,75 +225,17 @@ void OLED_Init(void)
     SDA = 1; SCL = 1;
 
     delay_ms(300);              // 留够时间让 VDD 爬完、内部基准起振
+    I2C_BusRecover();
 
-    // 总线恢复：SDA 被卡低时面板会忽略所有字节，打几个时钟再补个 STOP 放开。
-    // 这里用 20 个而不是规范的 9 个，多打没有副作用，能把移位寄存器冲干净。
-    SDA = 1;
-    for (i = 0; i < 20; i++) { SCL = 0; I2C_DLY(); SCL = 1; I2C_DLY(); }
-    SWI2C_Start();
-    SWI2C_Stop();
-    delay_ms(120);              // 等电荷泵稳定
+    OLED_LoadConfig();
 
-    // 整串命令连发三遍，无条件，不做「成功就 break」。
-    //
-    // 曾经用 OLED_Probe() 做跳出条件，但那个探测只有器件地址 ACK，而
-    // SSD1306 只要通了电就一定 ACK，不管有没有真收下命令，于是 break
-    // 第一轮必定命中，重试形同虚设。面板也无法回读 GDDRAM，软件上不
-    // 存在能证伪的初始化判据，那就别假装能测。命令都是幂等的，多发
-    // 三遍只多花几十毫秒。
-    //
-    // 每轮之间那次 80ms 很关键：第一遍已经把电荷泵打开，等电源真正
-    // 建起来，第二遍的 0xAF 才落在稳定电压上。
-    //
-    // 注意每轮末尾**不发 0xAF**。GDDRAM 上电是随机内容，只要显示一开
-    // 就会把雪花画出来，下一轮 0xAE 又关掉，反复三轮就是用户看到的
-    // 「唤醒后闪几下」。这里全程保持关闭，等最后清完显存再统一开屏，
-    // 屏幕从黑直接过渡到第一帧画面，中间不出现任何雪花。
-    for (t = 0; t < 3; t++) {
-        if (t) {
-            SDA = 1;
-            for (i = 0; i < 20; i++) { SCL = 0; I2C_DLY(); SCL = 1; I2C_DLY(); }
-            SWI2C_Start();
-            SWI2C_Stop();
-            delay_ms(80);
-        }
-        OLED_WriteCmd(0xAE);    // 关显示
-        OLED_WriteCmd(0xD5);    // 时钟分频
-        OLED_WriteCmd(0x80);
-        OLED_WriteCmd(0xA8);    // 多路复用比
-        OLED_WriteCmd(0x1F);    // 128x32 用 31
-        OLED_WriteCmd(0xD3);    // 显示偏移
-        OLED_WriteCmd(0x00);
-        OLED_WriteCmd(0x40);    // 起始行 0
-        OLED_WriteCmd(0x8D);    // 电荷泵
-        OLED_WriteCmd(0x14);    // 打开
-        // 必须等电荷泵把 VCC 抬上来再往下走，否则后面写进显存的
-        // 内容是打给一颗还没醒的芯片。
-        delay_ms(20);
-        OLED_WriteCmd(0x20);    // 寻址模式
-        OLED_WriteCmd(0x02);    // 页寻址
-        OLED_WriteCmd(0xA1);    // 段重映射，180° 旋转（列 0 在最右）
-        OLED_WriteCmd(0xC8);    // COM 扫描方向，180° 旋转
-        OLED_WriteCmd(0xDA);    // COM 引脚配置
-        OLED_WriteCmd(0x02);    // 128x32
-        OLED_WriteCmd(0x81);    // 对比度
-        OLED_WriteCmd(0xCF);
-        OLED_WriteCmd(0xD9);    // 预充周期
-        OLED_WriteCmd(0xF1);
-        OLED_WriteCmd(0xDB);    // VCOMH
-        OLED_WriteCmd(0x40);
-        OLED_WriteCmd(0xA4);    // 按显存内容显示
-        OLED_WriteCmd(0xA6);    // 正常显示（非反色）
-    }
-
-    // 三遍命令都发完了，电荷泵已经稳稳在工作。现在把显存清干净，
-    // 清完再开屏——这一步之后屏幕上就是纯黑，不再有随机雪花。
-    OLED_Clear();
-
-    OLED_WriteCmd(0x8D);
-    OLED_WriteCmd(0x14);
+    // 配置里已经打开了电荷泵，等它把 VCC 抬起来再往显存里写，
+    // 否则写进去的是打给一颗还没醒的芯片。
     delay_ms(20);
-    OLED_WriteCmd(0xAF);    // 开显示
+
+    // GDDRAM 上电是随机内容，必须清干净。清完仍不开屏——让调用方先把
+    // 开机那一屏画进去，再点亮，用户看到的第一帧就是完整画面。
+    OLED_Clear();
 }
 
 void OLED_Off(void)
@@ -242,16 +245,16 @@ void OLED_Off(void)
     OLED_WriteCmd(0x10);    // Disable
 }
 
-// 从 STOP 唤醒时用这个，不走 OLED_Init 那套冷启动流程。
+// 从 STOP 唤醒时先调这个：把面板拉回一个已知的配置状态，继续保持关屏。
 //
-// 睡眠期间面板 VDD 一直挂着电池，只是电荷泵关了，芯片内部状态全都还在：
-// 显存内容、寻址模式、对比度、段/COM 方向一个都没丢。所以不需要重新
-// 配置一遍，只要把电荷泵和显示打开就行。
-//
-// 这么做有两个好处：一是快，从按下按键到看见画面只要几十毫秒，而不是
-// 冷启动那一秒多的泄放加等待；二是不闪，OLED_Init 虽然已经改成清完
-// 显存才开屏，但那是为冷上电准备的，唤醒时显存里本来就存着正确的
-// 待机页，直接点亮就完事。
+// 为什么不能只补发几条命令：睡眠期间面板一直挂着电池，看起来状态不会丢，
+// 但电池电压偏低时漏电流会把面板自己的复位电路慢慢拖到 POR 门限以下，
+// 面板就悄悄复位了，寄存器全回出厂默认值。三种现象都能对上：
+//   0xC8 丢失 → COM 扫描方向反了 → 画面上下颠倒
+//   0x81 从 0xCF 回到 0x7F、0xD9 从 0xF1 回到 0x22 → 颜色很淡
+//   0xA8 从 0x1F(32路) 回到 0x3F(64路) → 多扫出 32 行 → 一行乱码
+// 面板复位时 GDDRAM 也会变成随机值，所以睡前写好的那一页同样不可信，
+// 调用方必须重新画一遍。整个过程都保持关屏，用户看不到中间状态。
 void OLED_Wake(void)
 {
     // 睡眠时引脚恢复成了准双向，这里先切回开漏再碰总线。
@@ -261,20 +264,19 @@ void OLED_Wake(void)
 
     // 唤醒瞬间面板可能正在从电荷泵关断中恢复，SDA 若被它拉着，
     // 打几个时钟把它放出来，避免第一笔事务被吞。
-    SWI2C_Start();
-    SWI2C_Stop();
-    delay_ms(5);
+    I2C_BusRecover();
 
-    OLED_WriteCmd(0x8D);    // 电荷泵
-    OLED_WriteCmd(0x14);    // 打开
-    delay_ms(20);           // 等 VCC 抬起来再开屏
+    // 整表重发。表头是 0xAE，配置全程保持关屏。
+    OLED_LoadConfig();
 
-    OLED_WriteCmd(0xAE);    // 先确保是关的
-    OLED_WriteCmd(0x20);    // 寻址模式，顺手重发一遍
-    OLED_WriteCmd(0x02);    // 页寻址
-    OLED_WriteCmd(0xA4);    // 按显存内容显示
-    OLED_WriteCmd(0xA6);    // 正常显示
-    OLED_WriteCmd(0xAF);    // 开显示
+    // 等电荷泵把 VCC 抬起来，否则接下来画进去的对比度会偏。
+    delay_ms(20);
+}
+
+// 开屏。放在所有绘制之后再调，用户看到的第一帧就是完整的画面。
+void OLED_On(void)
+{
+    OLED_WriteCmd(0xAF);
 }
 
 void OLED_Clear(void)

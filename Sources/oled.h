@@ -22,7 +22,10 @@
 #include "config.h"
 
 void OLED_Init(void);
+// 唤醒：整表重发配置，保持关屏。调用方画完内容后再调 OLED_On()。
 void OLED_Wake(void);
+// 开屏。放在绘制之后，保证用户看到的首帧就是完整画面。
+void OLED_On(void);
 void OLED_Off(void);
 void OLED_Clear(void);
 void OLED_ShowBigStringStep(uint8_t x, uint8_t page, const char *str, uint8_t step);

@@ -42,7 +42,7 @@ LightStander，**站光侠** — 一款外观 1:1 仿照光模块工业设计的掌上随机决策器。
 
 - 硬件目标：STC8G1K08A（8KB Flash）
 - 编译验证：已通过 Keil 构建
-- 实测大小：7847 / 8192 bytes，余量 345 bytes
+- 实测大小：7592 / 8192 bytes，余量 600 bytes
 - 功能状态：随机选股、随机操盘、低光提示、低压保护、低功耗待机均保留
 
 ## 功能介绍
@@ -132,7 +132,7 @@ LightStander，**站光侠** — 一款外观 1:1 仿照光模块工业设计的掌上随机决策器。
 
 | 资源 | 总量 | 已用 | 利用率 |
 |------|------|------|--------|
-| Flash (Code) | 8192 B | 7847 B | **95.8%** |
+| Flash (Code) | 8192 B | 7592 B | **92.7%** |
 | iRAM | 256 B | 9 B | 3.5% |
 | xRAM | 1024 B | 49 B | 4.8% |
 | 引脚 | 8 (SOP-8) | 6 个，剩 P3.0/P3.1 悬空 | 75% |
@@ -237,12 +237,10 @@ LightStander/
 │   └── inc/
 │       ├── config.h
 │       ├── def.h
-│       ├── STC8H.h
-│       └── Type_def.h
+│       └── STC8H.h
 ├── Tools/
 │   ├── fetch_stocks.py
 │   ├── gen_font16.py
-│   ├── gen_font8.py
 │   ├── inspect_font.py
 │   └── verify_ink.py
 ├── docs/
