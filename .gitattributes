@@ -1,0 +1,26 @@
+# Default: normalise text files, keep LF in the repository
+* text=auto
+
+# ---- Source / docs: CRLF in working tree (Windows + Keil) ----
+*.c    text eol=crlf
+*.h    text eol=crlf
+*.a51  text eol=crlf
+*.md   text eol=crlf
+*.py   text eol=crlf
+*.bat  text eol=crlf
+*.txt  text eol=crlf
+*.gitignore text eol=crlf
+*.gitattributes text eol=crlf
+
+# ---- Keil project files: keep their native LF untouched ----
+*.uvproj text eol=lf
+*.uvopt  text eol=lf
+
+# ---- Binary / generated: never touch ----
+*.hex   binary
+*.bin   binary
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.ttf   binary
+*.ttc   binary
